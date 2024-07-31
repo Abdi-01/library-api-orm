@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model BookLibrary {
+  id                 Int                 @id @unique(map: "id") @default(autoincrement())
+  bookId             Int
+  libraryId          Int
+  copies             Int
+  books              Book                @relation(fields: [bookId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "book_library_fk1")
+  library            Library             @relation(fields: [libraryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "book_library_fk2")
+  transaction_detail TransactionDetail[]
+
+  @@index([bookId], map: "book_library_fk1")
+  @@index([libraryId], map: "book_library_fk2")
+}
+
+model Book {
+  id           Int           @id @unique(map: "id") @default(autoincrement())
+  bookcode     String        @unique(map: "bookcode") @db.VarChar(255)
+  title        String        @db.VarChar(255)
+  author       String        @db.VarChar(255)
+  description  String?       @db.Text
+  publishedAt  DateTime      @db.Date
+  category     String        @db.VarChar(255)
+  createdAt    DateTime      @default(now()) @db.DateTime(0)
+  book_library BookLibrary[]
+}
+
+model Library {
+  id              Int           @id @unique(map: "id") @default(autoincrement())
+  library_code    String        @unique(map: "library_code") @db.VarChar(255)
+  library_address String        @db.Text
+  email           String        @unique(map: "email") @db.VarChar(255)
+  createdAt       DateTime      @default(now()) @db.DateTime(0)
+  book_library    BookLibrary[]
+  user            User[]
+}
+
+model MemberActivity {
+  id                                 Int           @id @unique(map: "id") @default(autoincrement())
+  userId                             Int
+  staffId                            Int
+  activity                           ACTIVITY      @default(VISIT)
+  createdAt                          DateTime      @default(now()) @db.DateTime(0)
+  user_member_activity_userIdTouser  User          @relation("member_activity_userIdTouser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "member_activity_fk1")
+  user_member_activity_staffIdTouser User          @relation("member_activity_staffIdTouser", fields: [staffId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "member_activity_fk2")
+  transactions                       Transaction[]
+
+  @@index([userId], map: "member_activity_fk1")
+  @@index([staffId], map: "member_activity_fk2")
+}
+
+model Shift {
+  id           Int           @id @unique(map: "id") @default(autoincrement())
+  title        String        @unique(map: "title") @db.VarChar(255)
+  start        DateTime      @db.Time(0)
+  end          DateTime      @db.Time(0)
+  createdAt    DateTime      @default(now()) @db.DateTime(0)
+  staff_detail StaffDetail[]
+}
+
+model StaffDetail {
+  id       Int    @id @unique(map: "id") @default(autoincrement())
+  userId   Int
+  position String @db.VarChar(255)
+  salary   String @db.VarChar(255)
+  shiftId  Int
+  user     User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "staff_detail_fk1")
+  shift    Shift  @relation(fields: [shiftId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "staff_detail_fk4")
+
+  @@index([userId], map: "staff_detail_fk1")
+  @@index([shiftId], map: "staff_detail_fk4")
+}
+
+model TransactionDetail {
+  id            Int         @id @unique(map: "id") @default(autoincrement())
+  transactionId Int
+  bookLibraryId Int
+  qty           Int
+  transactions  Transaction @relation(fields: [transactionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_detail_fk1")
+  book_library  BookLibrary @relation(fields: [bookLibraryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_detail_fk2")
+
+  @@index([transactionId], map: "transaction_detail_fk1")
+  @@index([bookLibraryId], map: "transaction_detail_fk2")
+}
+
+model Transaction {
+  id                 Int                 @id @unique(map: "id") @default(autoincrement())
+  transactionCode    String              @unique(map: "transactionCode") @db.VarChar(255)
+  userId             Int
+  date               DateTime            @default(now()) @db.DateTime(0)
+  due_date           DateTime            @db.DateTime(0)
+  memberActivityId   Int
+  transaction_detail TransactionDetail[]
+  user               User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_fk2")
+  member_activity    MemberActivity      @relation(fields: [memberActivityId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_fk5")
+
+  @@index([userId], map: "transactions_fk2")
+  @@index([memberActivityId], map: "transactions_fk5")
+}
+
+model User {
+  id                                            Int              @id @unique(map: "id") @default(autoincrement())
+  usercode                                      String           @unique(map: "usercode") @db.VarChar(255)
+  libraryId                                     Int
+  fullname                                      String           @db.VarChar(255)
+  noTelp                                        String           @unique(map: "noTelp") @db.VarChar(255)
+  email                                         String           @unique(map: "email") @db.VarChar(255)
+  role                                          ROLE             @default(MEMBER)
+  createdAt                                     DateTime         @default(now()) @db.DateTime(0)
+  member_activity_member_activity_userIdTouser  MemberActivity[] @relation("member_activity_userIdTouser")
+  member_activity_member_activity_staffIdTouser MemberActivity[] @relation("member_activity_staffIdTouser")
+  staff_detail                                  StaffDetail[]
+  transactions                                  Transaction[]
+  libraries                                     Library          @relation(fields: [libraryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_fk2")
+
+  @@index([libraryId], map: "user_fk2")
+}
+
+enum ROLE {
+  MEMBER
+  STAFF
+}
+
+enum ACTIVITY {
+  VISIT
+  BORROW
+  RETURN
+}
